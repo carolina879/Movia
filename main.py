@@ -212,7 +212,7 @@ def _descricao_transito(f):
     return "Via livre"
 
 
-frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
+frontend_dir = os.path.dirname(__file__)
 if os.path.exists(frontend_dir):
     app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="static")
 
