@@ -4,4 +4,4 @@ services:
     env: python
     pythonVersion: "3.11.9"
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn waze.backend.main:app --host 0.0.0.0 --port $PORT
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
