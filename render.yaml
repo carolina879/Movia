@@ -2,6 +2,6 @@ services:
   - type: web
     name: movia
     env: python
-    rootDir: waze/backend
-    buildCommand: pip install -r ../../requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    pythonVersion: "3.11.9"
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn waze.backend.main:app --host 0.0.0.0 --port $PORT

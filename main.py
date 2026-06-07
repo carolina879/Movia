@@ -211,10 +211,10 @@ def _descricao_transito(f):
     return "Via livre"
 
 
-# main.py fica em waze/backend/, index.html em waze/frontend/
+# Caminhos absolutos baseados na localização deste arquivo
 _backend_dir = os.path.dirname(os.path.abspath(__file__))
-frontend_dir = os.path.join(_backend_dir, "..", "frontend")
-frontend_dir = os.path.normpath(frontend_dir)
+_project_dir = os.path.dirname(_backend_dir)          # waze/
+frontend_dir = os.path.join(_project_dir, "frontend") # waze/frontend/
 
 @app.get("/")
 async def home():
