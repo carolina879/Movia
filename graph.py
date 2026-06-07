@@ -16,7 +16,9 @@ def load_graph(place: str = DEFAULT_PLACE) -> nx.MultiDiGraph:
         logger.info("Carregando grafo do cache...")
         with open(CACHE_FILE, "rb") as f:
             G = pickle.load(f)
+
         logger.info(f"Grafo carregado: {len(G.nodes)} nós, {len(G.edges)} arestas")
+        logger.info(f"CRS do grafo: {G.graph.get('crs', 'epsg:4326')}")
         return G
 
     logger.info(f"Baixando mapa de '{place}' do OpenStreetMap...")
@@ -27,11 +29,12 @@ def load_graph(place: str = DEFAULT_PLACE) -> nx.MultiDiGraph:
 
     G = ox.graph_from_place(place, network_type="drive", simplify=True)
 
-    
     G = ox.add_edge_speeds(G)
-
-    
     G = ox.add_edge_travel_times(G)
+
+    # Mantém o grafo em coordenadas geográficas (EPSG:4326 / lat-lon)
+    # NÃO projetar: ox.nearest_nodes, haversine e o frontend
+    # esperam graus decimais nos atributos x (lon) e y (lat) dos nós.
 
     logger.info(f"Grafo criado: {len(G.nodes)} nós, {len(G.edges)} arestas")
     logger.info("Salvando cache...")

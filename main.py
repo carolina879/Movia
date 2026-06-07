@@ -8,7 +8,6 @@ import osmnx as ox
 import httpx
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from graph import load_graph
@@ -212,9 +211,23 @@ def _descricao_transito(f):
     return "Via livre"
 
 
-frontend_dir = os.path.dirname(__file__)
-if os.path.exists(frontend_dir):
-    app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="static")
+# main.py fica em waze/backend/, index.html em waze/frontend/
+_backend_dir = os.path.dirname(os.path.abspath(__file__))
+frontend_dir = os.path.join(_backend_dir, "..", "frontend")
+frontend_dir = os.path.normpath(frontend_dir)
+
+@app.get("/")
+async def home():
+    from fastapi.responses import FileResponse, HTMLResponse
+    index_path = os.path.join(frontend_dir, "index.html")
+    if not os.path.exists(index_path):
+        logger.error(f"index.html nao encontrado em: {index_path}")
+        return HTMLResponse(
+            f"<h2>index.html nao encontrado em: {index_path}</h2>"
+            "<p>Estrutura esperada: waze/frontend/index.html e waze/backend/main.py</p>",
+            status_code=500,
+        )
+    return FileResponse(index_path)
 
 
 if __name__ == "__main__":
