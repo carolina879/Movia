@@ -8,6 +8,7 @@ import osmnx as ox
 import httpx
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
 from graph import load_graph
@@ -23,6 +24,13 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 G = None
+
+# Diretório deste arquivo = onde está o index.html
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+INDEX_PATH = os.path.join(THIS_DIR, "index.html")
+
+logger.info(f"THIS_DIR={THIS_DIR}")
+logger.info(f"INDEX_PATH={INDEX_PATH}")
 
 
 @asynccontextmanager
@@ -46,17 +54,22 @@ app.add_middleware(
 )
 
 
-
 class FavoritoIn(BaseModel):
     nome: str
     lat: float
     lon: float
 
 
-
 def _nearest(lon, lat):
     try:
-        return ox.nearest_nodes(G, lon, lat)
+        # Busca manual com KDTree para não depender do scikit-learn
+        import numpy as np
+        nodes = list(G.nodes(data=True))
+        xs = np.array([d["x"] for _, d in nodes])
+        ys = np.array([d["y"] for _, d in nodes])
+        dists = (xs - lon)**2 + (ys - lat)**2
+        idx = int(np.argmin(dists))
+        return nodes[idx][0]
     except Exception as e:
         raise HTTPException(400, f"Ponto fora da área do mapa: {e}")
 
@@ -69,6 +82,20 @@ def _path_to_geojson(G, path, props):
     }
 
 
+@app.get("/api/debug")
+async def debug():
+    try:
+        dir_contents = os.listdir(THIS_DIR)
+    except Exception as e:
+        dir_contents = str(e)
+    return {
+        "__file__": os.path.abspath(__file__),
+        "THIS_DIR": THIS_DIR,
+        "INDEX_PATH": INDEX_PATH,
+        "index_exists": os.path.exists(INDEX_PATH),
+        "dir_contents": dir_contents,
+        "cwd": os.getcwd(),
+    }
 
 
 @app.get("/api/status")
@@ -83,7 +110,7 @@ async def get_routes(
     olat: float = Query(...), olon: float = Query(...),
     dlat: float = Query(...), dlon: float = Query(...),
     k: int = Query(3, ge=1, le=5),
-    modo: str = Query("drive", regex="^(drive|walk|bike)$"),
+    modo: str = Query("drive", pattern="^(drive|walk|bike)$"),
     evitar_pedagio: bool = Query(False),
     evitar_rodovias: bool = Query(False),
     transito: bool = Query(True),
@@ -95,7 +122,6 @@ async def get_routes(
     dest = _nearest(dlon, dlat)
     if orig == dest:
         raise HTTPException(400, "Origem e destino são o mesmo ponto.")
-
 
     try:
         dist_km = check_distance(G, orig, dest)
@@ -211,25 +237,19 @@ def _descricao_transito(f):
     return "Via livre"
 
 
-# index.html fica no mesmo diretório que main.py (waze/backend/)
-_backend_dir = os.path.dirname(os.path.abspath(__file__))
-frontend_dir = _backend_dir
-
 @app.get("/")
 async def home():
-    from fastapi.responses import FileResponse, HTMLResponse
-    index_path = os.path.join(frontend_dir, "index.html")
-    if not os.path.exists(index_path):
-        logger.error(f"index.html nao encontrado em: {index_path}")
+    if not os.path.exists(INDEX_PATH):
+        logger.error(f"index.html nao encontrado em: {INDEX_PATH}")
         return HTMLResponse(
-            f"<h2>index.html nao encontrado em: {index_path}</h2>"
-            "<p>Estrutura esperada: waze/frontend/index.html e waze/backend/main.py</p>",
+            f"<h2>index.html nao encontrado em: {INDEX_PATH}</h2>"
+            f"<p>Conteudo de THIS_DIR: {os.listdir(THIS_DIR)}</p>",
             status_code=500,
         )
-    return FileResponse(index_path)
+    return FileResponse(INDEX_PATH)
 
 
 if __name__ == "__main__":
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    os.chdir(THIS_DIR)
     logger.info("Iniciando Uvicorn...")
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

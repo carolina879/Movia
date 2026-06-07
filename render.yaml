@@ -3,5 +3,5 @@ services:
     name: movia
     env: python
     pythonVersion: "3.11.9"
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements.txt && python -c "import sklearn; print('sklearn ok')"
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
